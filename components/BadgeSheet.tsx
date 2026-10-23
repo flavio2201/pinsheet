@@ -31,6 +31,8 @@ const ICONS = {
   download: "M12 4v11m0 0l-4-4m4 4l4-4M5 20h14",
   lock: "M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3",
   close: "M6 6l12 12M18 6L6 18",
+  camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
+  image: "M4 5h16v14H4zM4 16l4.5-4.5L14 17M13 14l2.5-2.5L20 16M15.5 8.5h.01",
 };
 
 function Icon({ name }: { name: keyof typeof ICONS }) {
@@ -62,9 +64,12 @@ export default function BadgeSheet() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [pxPerMm, setPxPerMm] = useState(2);
+  // painel "tirar foto ou escolher da galeria" (só em telas de toque); guarda o círculo de destino
+  const [chooser, setChooser] = useState<{ index: number | null } | null>(null);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const targetIndex = useRef<number | null>(null);
   const gesture = useRef<Gesture | null>(null);
 
@@ -186,9 +191,25 @@ export default function BadgeSheet() {
     } else restartGesture(g);
   };
 
+  // No computador abre direto o seletor de arquivos; no celular pergunta se é câmera ou galeria
   const openPicker = (index: number | null) => {
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      setChooser({ index });
+      return;
+    }
     targetIndex.current = index;
     fileRef.current?.click();
+  };
+
+  const pickFrom = (input: HTMLInputElement | null) => {
+    targetIndex.current = chooser?.index ?? null;
+    setChooser(null);
+    input?.click();
+  };
+
+  const onFilesChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) addFiles(e.target.files, targetIndex.current);
+    e.target.value = "";
   };
 
   const fillEmpty = () => {
@@ -260,17 +281,19 @@ export default function BadgeSheet() {
         <li><b>3</b> Print &amp; cut</li>
       </ol>
 
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => {
-          if (e.target.files) addFiles(e.target.files, targetIndex.current);
-          e.target.value = "";
-        }}
-      />
+      <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={onFilesChosen} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onFilesChosen} />
+
+      {chooser && (
+        <div className="chooser-backdrop" onClick={(e) => e.target === e.currentTarget && setChooser(null)}>
+          <div className="chooser" role="dialog" aria-modal="true" aria-label="Add a pic" onKeyDown={(e) => e.key === "Escape" && setChooser(null)}>
+            <h2><i style={{ background: "var(--lime)" }} /> Add a pic</h2>
+            <button className="btn choice primary" onClick={() => pickFrom(cameraRef.current)}><Icon name="camera" /> Take a photo</button>
+            <button className="btn choice" onClick={() => pickFrom(fileRef.current)}><Icon name="image" /> Choose from your photos</button>
+            <button className="btn ghost wide" onClick={() => setChooser(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="error" role="alert">

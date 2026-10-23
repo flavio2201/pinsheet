@@ -32,7 +32,7 @@
   }
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; }
 body {
   min-height: 100vh;
@@ -287,6 +287,28 @@ input[type="range"]:focus-visible { outline: 3px solid var(--pink); outline-offs
 .card.cta .btn.primary { --shadow-c: #1b1525; border-color: #1b1525; }
 
 .sel-card h2 .sel-close { display: none; }
+
+/* Escolha entre câmera e galeria (celular) */
+.chooser-backdrop {
+  position: fixed; inset: 0; z-index: 40;
+  display: flex; align-items: flex-end; justify-content: center;
+  background: rgba(20, 17, 27, .45);
+}
+.chooser {
+  width: 100%; max-width: 640px; display: flex; flex-direction: column; gap: 10px;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--panel); border: 2px solid var(--edge); border-bottom: 0; border-radius: 22px 22px 0 0;
+}
+.chooser h2 {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 4px;
+  font-size: .78rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+}
+.chooser h2 i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--edge); }
+.btn.choice { justify-content: flex-start; height: 56px; padding: 0 18px; font-size: 1.05rem; border-radius: 14px; }
+.btn.choice .icon { width: 22px; height: 22px; }
+@media (prefers-reduced-motion: no-preference) {
+  .chooser { animation: sheet-up .2s ease-out; }
+}
 
 /* Celular: o painel lateral vai para baixo da folha, então os controles do pin
    selecionado sobem como um painel fixo no rodapé da tela */
