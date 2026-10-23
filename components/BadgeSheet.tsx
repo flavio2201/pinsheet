@@ -139,8 +139,9 @@ export default function BadgeSheet() {
     // o "click" seguinte sempre cai na folha)
     if (!g && e.target === e.currentTarget) setSelected(null);
     if (!g) {
-      const id = (e.target as HTMLElement).closest<HTMLElement>("[data-slot]")?.dataset.slot;
-      const slot = allSlots.find((s) => s.id === id);
+      // o círculo é identificado pela posição na folha (igual no servidor e no cliente)
+      const index = (e.target as HTMLElement).closest<HTMLElement>("[data-index]")?.dataset.index;
+      const slot = index === undefined ? undefined : pageSlots[Number(index)];
       if (!slot?.img) return;
       setSelected(slot.id);
       g = gesture.current = { slotId: slot.id, pts: new Map(), base: gestureBase(slot, new Map()) };
@@ -161,11 +162,28 @@ export default function BadgeSheet() {
     update(g.slotId, patch);
   };
 
+  // No celular o painel do pin selecionado cobre a parte de baixo da tela:
+  // ao soltar o dedo, rola a página para o pin ficar visível acima dele
+  const revealSelected = (slotId: string) => {
+    requestAnimationFrame(() => {
+      const panel = document.querySelector<HTMLElement>(".sel-card.is-open");
+      const index = pageSlots.findIndex((s) => s.id === slotId);
+      const pin = sheetRef.current?.querySelector<HTMLElement>(`[data-index="${index}"]`);
+      if (!panel || !pin || getComputedStyle(panel).position !== "fixed") return;
+      // a margem faz o scrollIntoView parar acima do painel; offsetHeight (e não o retângulo)
+      // porque o painel pode estar no meio da animação de entrada
+      pin.style.scrollMarginBottom = `${panel.offsetHeight + 12}px`;
+      pin.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  };
+
   const onSheetPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
     const g = gesture.current;
     if (!g?.pts.delete(e.pointerId)) return;
-    if (g.pts.size === 0) gesture.current = null;
-    else restartGesture(g);
+    if (g.pts.size === 0) {
+      gesture.current = null;
+      revealSelected(g.slotId);
+    } else restartGesture(g);
   };
 
   const openPicker = (index: number | null) => {
@@ -211,7 +229,7 @@ export default function BadgeSheet() {
   };
 
   return (
-    <div className="app">
+    <div className={`app${sel?.img ? " sel-open" : ""}`}>
       <header className="top">
         <div className="brand">
           <Logo />
@@ -298,6 +316,7 @@ export default function BadgeSheet() {
               {pageSlots.map((slot, i) => (
                 <Circle
                   key={slot.id}
+                  index={i}
                   slot={slot}
                   spot={spots[i]}
                   pageW={pageW}
@@ -323,8 +342,13 @@ export default function BadgeSheet() {
         </section>
 
         <aside className="panel">
-          <div className="card">
-            <h2><i style={{ background: "var(--pink)" }} /> Selected pin</h2>
+          <div className={`card sel-card${sel?.img ? " is-open" : ""}`}>
+            <h2>
+              <i style={{ background: "var(--pink)" }} /> Selected pin
+              {sel?.img && (
+                <button className="btn sel-close" onClick={() => setSelected(null)}>Done</button>
+              )}
+            </h2>
             {sel?.img ? (
               <>
                 <div className="sel-head">
@@ -345,11 +369,11 @@ export default function BadgeSheet() {
                     onChange={(e) => update(sel.id, { zoom: Number(e.target.value) })}
                   />
                 </label>
-                <div className="row">
-                  <button className="btn" onClick={() => update(sel.id, { rot: (sel.rot + 90) % 360 })}><Icon name="rotate" /> Rotate</button>
-                  <button className="btn" onClick={() => update(sel.id, { zoom: 1, ox: 0, oy: 0 })}><Icon name="reset" /> Reset</button>
-                  <button className="btn" onClick={() => openPicker(allSlots.findIndex((s) => s.id === sel.id))}><Icon name="swap" /> Replace</button>
-                  <button className="btn danger" onClick={removeSel}><Icon name="trash" /> Remove</button>
+                <div className="row tool-grid">
+                  <button className="btn tool" onClick={() => update(sel.id, { rot: (sel.rot + 90) % 360 })}><Icon name="rotate" /> Rotate</button>
+                  <button className="btn tool" onClick={() => update(sel.id, { zoom: 1, ox: 0, oy: 0 })}><Icon name="reset" /> Reset</button>
+                  <button className="btn tool" onClick={() => openPicker(allSlots.findIndex((s) => s.id === sel.id))}><Icon name="swap" /> Replace</button>
+                  <button className="btn tool danger" onClick={removeSel}><Icon name="trash" /> Remove</button>
                 </div>
                 <button className="btn lime wide" onClick={fillEmpty}><Icon name="copy" /> Fill empty circles with this</button>
               </>
@@ -448,6 +472,7 @@ function PinPreview({ slot }: { slot: Slot }) {
 
 type CircleProps = {
   slot: Slot;
+  index: number;
   spot: { x: number; y: number };
   pageW: number;
   pageH: number;
@@ -510,7 +535,7 @@ function Circle(p: CircleProps) {
       ref={wrapRef}
       className={`circle${p.selected ? " is-selected" : ""}${p.slot.img ? " has-img" : ""}${over ? " is-over" : ""}`}
       style={style}
-      data-slot={p.slot.id}
+      data-index={p.index}
       role="button"
       tabIndex={0}
       aria-label={p.slot.img ? `Image ${p.slot.name ?? ""}, select to adjust` : "Empty circle, choose an image"}

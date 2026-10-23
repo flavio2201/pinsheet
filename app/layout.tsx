@@ -9,7 +9,8 @@ export const metadata: Metadata = {
   description: "Add your pics, fit each one in a circle and download a print-ready PDF at the exact size for your pin press.",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1 };
+// viewport-fit=cover libera env(safe-area-inset-bottom) para o painel fixo do celular
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
